@@ -124,23 +124,23 @@
 
 //00000000000000000000000000000000000000000000000000000000000000000000000000000000 this code run sucessfully
 import 'package:flutter/material.dart';
-import 'package:plumber_project/pages/emergency.dart';
-import 'package:plumber_project/pages/maps_screen.dart';
-import 'package:plumber_project/pages/userservice/plumberservice.dart';
-import 'package:plumber_project/test.dart';
+import 'package:skill_link/pages/emergency.dart';
+import 'package:skill_link/pages/maps_screen.dart';
+import 'package:skill_link/pages/userservice/plumberservice.dart';
+import 'package:skill_link/test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:plumber_project/pages/splash.dart';
-import 'package:plumber_project/pages/theme.dart';
-import 'package:plumber_project/pages/login.dart';
-import 'package:plumber_project/pages/plumber_dashboard.dart';
-import 'package:plumber_project/pages/electrition_dashboard.dart';
-import 'package:plumber_project/pages/dashboard.dart';
-import 'package:plumber_project/pages/plumber_profile.dart';
-import 'package:plumber_project/pages/electrition_profile.dart';
-import 'package:plumber_project/pages/user_profile.dart';
+import 'package:skill_link/pages/splash.dart';
+import 'package:skill_link/pages/theme.dart';
+import 'package:skill_link/pages/login.dart';
+import 'package:skill_link/pages/plumber_dashboard.dart' as dash;
+import 'package:skill_link/pages/electrition_dashboard.dart';
+import 'package:skill_link/pages/dashboard.dart';
+import 'package:skill_link/pages/plumber_profile.dart' as profile;
+import 'package:skill_link/pages/electrition_profile.dart';
+import 'package:skill_link/pages/user_profile.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -156,7 +156,8 @@ void main() async {
   if (rememberMe && token != null && role != null && userId != null) {
     bool hasProfile = await checkUserProfile(userId, token);
     if (role == 'plumber') {
-      initialScreen = hasProfile ? PlumberDashboard() : PlumberProfilePage();
+      initialScreen =
+          hasProfile ? dash.PlumberDashboard() : profile.PlumberProfilePage();
     } else if (role == 'electrician') {
       initialScreen =
           hasProfile ? ElectricianDashboard() : ElectricianProfilePage();

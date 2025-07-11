@@ -831,7 +831,7 @@
 //   }
 // }
 
-//00000000000000000000000000000000000000000000000000000000000 yai sirf pic nhi dikhaa raha plumber ki
+//00000000000000000000000000000000000000000000000000000000000 yai sirf pic nhi dikhaa raha plumber ki or background color white hsi is ka
 // import 'package:flutter/material.dart';
 // import 'package:http/http.dart' as http;
 // import 'package:shared_preferences/shared_preferences.dart';
@@ -1046,9 +1046,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:lottie/lottie.dart';
 
-import 'package:plumber_project/pages/Apis.dart';
-import 'package:plumber_project/pages/userservice/plumbermodel.dart';
-import 'package:plumber_project/pages/userservice/plumber_detail_page.dart';
+import 'package:skill_link/pages/Apis.dart';
+import 'package:skill_link/pages/userservice/plumbermodel.dart';
+import 'package:skill_link/pages/userservice/plumber_detail_page.dart';
+
+final Color darkBlue = Color(0xFF003E6B);
+final Color tealBlue = Color(0xFF00A8A8);
 
 class PlumberPage extends StatefulWidget {
   @override
@@ -1092,9 +1095,7 @@ class _PlumberPageState extends State<PlumberPage> {
     _userPosition = await Geolocator.getCurrentPosition();
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('bearer_token'); // ✅ Use correct key
-
-    print("🔑 Retrieved token: $_token");
+    _token = prefs.getString('bearer_token');
 
     if (_token != null && _token!.isNotEmpty) {
       await fetchPlumbersWithinRadius();
@@ -1138,21 +1139,11 @@ class _PlumberPageState extends State<PlumberPage> {
                 );
 
                 if (distance <= 5000) {
-                  // Fix URL concatenation for plumber_image
                   if (profile['plumber_image'] != null &&
-                      profile['plumber_image'].toString().isNotEmpty &&
                       !profile['plumber_image'].toString().startsWith('http')) {
-                    // Remove trailing slash from baseUrl if present
-                    String base = baseUrl.endsWith('/')
-                        ? baseUrl.substring(0, baseUrl.length - 1)
-                        : baseUrl;
-
                     profile['plumber_image'] =
-                        '$base/uploads/plumber_image/${profile['plumber_image']}';
+                        '$baseUrl/uploads/plumber_image/${profile['plumber_image']}';
                   }
-
-                  print(
-                      'Plumber Image URL for ${profile['full_name']}: ${profile['plumber_image']}');
 
                   nearbyPlumbers.add(Plumber.fromJson(profile));
                 }
@@ -1187,7 +1178,11 @@ class _PlumberPageState extends State<PlumberPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Plumber Services')),
+      backgroundColor: darkBlue,
+      appBar: AppBar(
+        title: Text('Plumber Services'),
+        backgroundColor: tealBlue,
+      ),
       body: _showFindingScreen
           ? Center(
               child: Column(
@@ -1195,20 +1190,28 @@ class _PlumberPageState extends State<PlumberPage> {
                 children: [
                   Lottie.asset("assets/animation/finding_providers.json"),
                   SizedBox(height: 20),
-                  Text("Finding nearby plumbers...",
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+                  Text(
+                    "Finding nearby plumbers...",
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
                 ],
               ),
             )
           : _loading
-              ? Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(color: tealBlue))
               : _plumbers.isEmpty
-                  ? Center(child: Text('No nearby plumbers found.'))
+                  ? Center(
+                      child: Text(
+                        'No nearby plumbers found.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: _plumbers.length,
                       itemBuilder: (context, index) {
                         final plumber = _plumbers[index];
                         return Card(
+                          color: Colors.white,
                           margin:
                               EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           child: ListTile(
@@ -1220,43 +1223,43 @@ class _PlumberPageState extends State<PlumberPage> {
                                       PlumberDetailPage(plumber: plumber),
                                 ),
                               );
-                              print('Passing plumber ID: ${plumber.id}');
                             },
                             leading: CircleAvatar(
                               radius: 30,
                               backgroundColor: Colors.grey[200],
                               child: ClipOval(
-                                child: (plumber.plumberImage != null &&
-                                        plumber.plumberImage!.isNotEmpty)
-                                    ? Image.network(
-                                        plumber.plumberImage!,
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          print(
-                                              'Failed to load image: $error'); // Debug
-                                          return Image.asset(
-                                            'assets/images/placeholder.png',
-                                            width: 60,
-                                            height: 60,
-                                            fit: BoxFit.cover,
-                                          );
-                                        },
-                                      )
-                                    : Image.asset(
-                                        'assets/images/placeholder.png',
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                      ),
+                                child: Image.network(
+                                  plumber.plumberImage ?? '',
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/placeholder.png',
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                            title: Text(plumber.fullName),
-                            subtitle:
-                                Text('${plumber.experience} years experience'),
-                            trailing: Text('Rs:${plumber.hourlyRate}/hr'),
+                            title: Text(
+                              plumber.fullName,
+                              style: TextStyle(
+                                color: darkBlue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${plumber.experience} years experience',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                            trailing: Text(
+                              'Rs:${plumber.hourlyRate}/hr',
+                              style: TextStyle(
+                                  color: tealBlue, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         );
                       },

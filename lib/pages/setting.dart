@@ -53,11 +53,10 @@
 //   }
 // }
 
-
 import 'package:flutter/material.dart';
-import 'package:plumber_project/pages/dashboard.dart';
-import 'package:plumber_project/pages/profile.dart';
-import 'package:plumber_project/main.dart';
+import 'package:skill_link/pages/dashboard.dart';
+import 'package:skill_link/pages/profile.dart';
+import 'package:skill_link/main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

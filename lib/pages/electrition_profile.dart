@@ -1078,6 +1078,346 @@
 // }
 
 // 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000 this code get the live location of the user
+// import 'dart:convert';
+// import 'dart:io';
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:image_picker/image_picker.dart';
+// import 'package:file_picker/file_picker.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:geocoding/geocoding.dart';
+// import 'package:permission_handler/permission_handler.dart';
+// import 'package:plumber_project/pages/Apis.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:plumber_project/pages/electrition_dashboard.dart';
+
+// class ElectricianProfilePage extends StatefulWidget {
+//   final VoidCallback? onSuccess;
+
+//   const ElectricianProfilePage({Key? key, this.onSuccess}) : super(key: key);
+
+//   @override
+//   _ElectricianProfilePageState createState() => _ElectricianProfilePageState();
+// }
+
+// class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
+//   final nameController = TextEditingController();
+//   final experienceController = TextEditingController();
+//   final expertiseController = TextEditingController();
+//   final rateController = TextEditingController();
+//   final contactController = TextEditingController();
+//   final roleController = TextEditingController();
+
+//   File? _profileImage;
+//   String? _bearerToken;
+//   Position? _currentPosition;
+//   String? _currentAddress;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadUserData();
+//     _getLocationAndAddress();
+//   }
+
+//   Future<void> _loadUserData() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     roleController.text = prefs.getString('role') ?? 'Unknown';
+//     _bearerToken = prefs.getString('bearer_token');
+//   }
+
+//   Future<void> _getLocationAndAddress() async {
+//     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+//     if (!serviceEnabled) {
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+//       return;
+//     }
+
+//     LocationPermission permission = await Geolocator.checkPermission();
+//     if (permission == LocationPermission.denied) {
+//       permission = await Geolocator.requestPermission();
+//       if (permission == LocationPermission.denied) {
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text('Location permission denied')));
+//         return;
+//       }
+//     }
+
+//     if (permission == LocationPermission.deniedForever) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Permission permanently denied. Open settings.'),
+//           action: SnackBarAction(
+//             label: 'Settings',
+//             onPressed: () => openAppSettings(),
+//           ),
+//         ),
+//       );
+//       return;
+//     }
+
+//     try {
+//       Position position = await Geolocator.getCurrentPosition(
+//         desiredAccuracy: LocationAccuracy.high,
+//       );
+
+//       print("Position fetched: ${position.latitude}, ${position.longitude}");
+
+//       List<Placemark> placemarks = await placemarkFromCoordinates(
+//         position.latitude,
+//         position.longitude,
+//       );
+
+//       if (placemarks.isNotEmpty) {
+//         final place = placemarks.first;
+//         final address =
+//             "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+//         print("Detected Address: $address");
+
+//         setState(() {
+//           _currentPosition = position;
+//           _currentAddress = address;
+//         });
+//       } else {
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text('No address found')));
+//       }
+//     } catch (e) {
+//       print("Error fetching location: $e");
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
+//     }
+//   }
+
+//   Future<void> _pickImageOption() async {
+//     showModalBottomSheet(
+//       context: context,
+//       builder: (_) => SafeArea(
+//         child: Wrap(
+//           children: [
+//             ListTile(
+//               leading: Icon(Icons.camera_alt),
+//               title: Text('Camera'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickImage(ImageSource.camera);
+//               },
+//             ),
+//             ListTile(
+//               leading: Icon(Icons.photo_library),
+//               title: Text('Gallery'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickImage(ImageSource.gallery);
+//               },
+//             ),
+//             ListTile(
+//               leading: Icon(Icons.insert_drive_file),
+//               title: Text('File'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickFileImage();
+//               },
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Future<void> _pickImage(ImageSource source) async {
+//     final picked = await ImagePicker().pickImage(source: source);
+//     if (picked != null) {
+//       setState(() {
+//         _profileImage = File(picked.path);
+//       });
+//     }
+//   }
+
+//   Future<void> _pickFileImage() async {
+//     final result = await FilePicker.platform.pickFiles(type: FileType.image);
+//     if (result != null && result.files.single.path != null) {
+//       setState(() {
+//         _profileImage = File(result.files.single.path!);
+//       });
+//     }
+//   }
+
+//   Future<void> _submitProfile() async {
+//     if (_bearerToken == null) {
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(SnackBar(content: Text('Token not found')));
+//       return;
+//     }
+
+//     final url = Uri.parse('$baseUrl/api/profile/');
+//     final request = http.MultipartRequest('POST', url);
+//     request.headers['Authorization'] = 'Bearer $_bearerToken';
+
+//     request.fields.addAll({
+//       'full_name': nameController.text,
+//       'experience': experienceController.text,
+//       'skill': expertiseController.text,
+//       'hourly_rate': rateController.text,
+//       'contact_number': contactController.text,
+//       'role': roleController.text,
+//       if (_currentAddress != null) 'service_area': _currentAddress!,
+//       if (_currentPosition != null) ...{
+//         'latitude': _currentPosition!.latitude.toString(),
+//         'longitude': _currentPosition!.longitude.toString(),
+//       },
+//     });
+
+//     if (_profileImage != null) {
+//       request.files.add(
+//         await http.MultipartFile.fromPath(
+//           'electrician_image',
+//           _profileImage!.path,
+//         ),
+//       );
+//     }
+
+//     try {
+//       final streamed = await request.send();
+//       final response = await http.Response.fromStream(streamed);
+
+//       if (response.statusCode == 200 || response.statusCode == 201) {
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text('Profile saved')));
+//         Navigator.pushReplacement(
+//           context,
+//           MaterialPageRoute(builder: (_) => ElectricianDashboard()),
+//         );
+//       } else {
+//         print(response.body);
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text('Failed to save profile')));
+//       }
+//     } catch (e) {
+//       print("Error: $e");
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(SnackBar(content: Text('Error saving profile')));
+//     }
+//   }
+
+//   Widget _buildField(
+//     String label,
+//     TextEditingController controller, {
+//     TextInputType type = TextInputType.text,
+//     bool readOnly = false,
+//     List<TextInputFormatter>? formatters,
+//   }) {
+//     return Padding(
+//       padding: const EdgeInsets.only(bottom: 16),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+//           SizedBox(height: 6),
+//           TextField(
+//             controller: controller,
+//             keyboardType: type,
+//             readOnly: readOnly,
+//             inputFormatters: formatters,
+//             decoration: InputDecoration(border: OutlineInputBorder()),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text(
+//           'Electrician Profile',
+//           style: TextStyle(color: Colors.black),
+//         ),
+//         backgroundColor: Colors.white,
+//         iconTheme: IconThemeData(color: Colors.black),
+//       ),
+//       body: SingleChildScrollView(
+//         padding: EdgeInsets.all(16),
+//         child: Column(
+//           children: [
+//             Center(
+//               child: Column(
+//                 children: [
+//                   CircleAvatar(
+//                     radius: 50,
+//                     backgroundImage: _profileImage != null
+//                         ? FileImage(_profileImage!)
+//                         : null,
+//                     backgroundColor: Colors.grey,
+//                     child: _profileImage == null
+//                         ? Icon(Icons.person, size: 60, color: Colors.white)
+//                         : null,
+//                   ),
+//                   SizedBox(height: 10),
+//                   TextButton.icon(
+//                     onPressed: _pickImageOption,
+//                     icon: Icon(Icons.camera_alt),
+//                     label: Text("Update Photo"),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             SizedBox(height: 20),
+//             _buildField("Full Name", nameController),
+//             _buildField(
+//               "Experience (Years)",
+//               experienceController,
+//               type: TextInputType.number,
+//             ),
+//             _buildField("Skills ", expertiseController),
+//             _buildField(
+//               "Hourly Rate (PKR)",
+//               rateController,
+//               type: TextInputType.number,
+//             ),
+//             _buildField(
+//               "Contact Number",
+//               contactController,
+//               type: TextInputType.phone,
+//               formatters: [
+//                 FilteringTextInputFormatter.digitsOnly,
+//                 LengthLimitingTextInputFormatter(11),
+//               ],
+//             ),
+//             _buildField("Role", roleController, readOnly: true),
+//             if (_currentAddress != null)
+//               _buildField(
+//                 "Live Location",
+//                 TextEditingController(text: _currentAddress),
+//                 readOnly: true,
+//               ),
+//             SizedBox(height: 30),
+//             ElevatedButton(
+//               onPressed: _submitProfile,
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.grey,
+//                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+//               ),
+//               child: Text("Save Profile"),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -1088,9 +1428,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:plumber_project/pages/Apis.dart';
+import 'package:skill_link/pages/Apis.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:plumber_project/pages/electrition_dashboard.dart';
+import 'package:skill_link/pages/electrition_dashboard.dart';
 
 class ElectricianProfilePage extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -1102,6 +1442,9 @@ class ElectricianProfilePage extends StatefulWidget {
 }
 
 class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
+  final Color darkBlue = const Color(0xFF003E6B);
+  final Color tealBlue = const Color(0xFF00A8A8);
+
   final nameController = TextEditingController();
   final experienceController = TextEditingController();
   final expertiseController = TextEditingController();
@@ -1130,9 +1473,8 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
   Future<void> _getLocationAndAddress() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location services are disabled')));
       return;
     }
 
@@ -1140,9 +1482,8 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Location permission denied')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location permission denied')));
         return;
       }
     }
@@ -1165,8 +1506,6 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      print("Position fetched: ${position.latitude}, ${position.longitude}");
-
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -1176,22 +1515,18 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
         final place = placemarks.first;
         final address =
             "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-        print("Detected Address: $address");
 
         setState(() {
           _currentPosition = position;
           _currentAddress = address;
         });
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('No address found')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No address found')));
       }
     } catch (e) {
-      print("Error fetching location: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
     }
   }
 
@@ -1251,9 +1586,8 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
 
   Future<void> _submitProfile() async {
     if (_bearerToken == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Token not found')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Token not found')));
       return;
     }
 
@@ -1289,24 +1623,19 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Profile saved')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Profile saved')));
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => ElectricianDashboard()),
         );
       } else {
-        print(response.body);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save profile')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to save profile')));
       }
     } catch (e) {
-      print("Error: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error saving profile')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error saving profile')));
     }
   }
 
@@ -1322,14 +1651,22 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(label,
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           SizedBox(height: 6),
           TextField(
             controller: controller,
             keyboardType: type,
             readOnly: readOnly,
             inputFormatters: formatters,
-            decoration: InputDecoration(border: OutlineInputBorder()),
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white12,
+              border: OutlineInputBorder(),
+              hintStyle: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),
@@ -1339,13 +1676,12 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: darkBlue,
       appBar: AppBar(
-        title: Text(
-          'Electrician Profile',
-          style: TextStyle(color: Colors.black),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: Colors.black),
+        title:
+            Text('Electrician Profile', style: TextStyle(color: Colors.white)),
+        backgroundColor: tealBlue,
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -1359,7 +1695,7 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
                     backgroundImage: _profileImage != null
                         ? FileImage(_profileImage!)
                         : null,
-                    backgroundColor: Colors.grey,
+                    backgroundColor: Colors.grey.shade700,
                     child: _profileImage == null
                         ? Icon(Icons.person, size: 60, color: Colors.white)
                         : null,
@@ -1367,49 +1703,40 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
                   SizedBox(height: 10),
                   TextButton.icon(
                     onPressed: _pickImageOption,
-                    icon: Icon(Icons.camera_alt),
-                    label: Text("Update Photo"),
+                    icon: Icon(Icons.camera_alt, color: tealBlue),
+                    label:
+                        Text("Update Photo", style: TextStyle(color: tealBlue)),
                   ),
                 ],
               ),
             ),
             SizedBox(height: 20),
             _buildField("Full Name", nameController),
-            _buildField(
-              "Experience (Years)",
-              experienceController,
-              type: TextInputType.number,
-            ),
-            _buildField("Skills ", expertiseController),
-            _buildField(
-              "Hourly Rate (PKR)",
-              rateController,
-              type: TextInputType.number,
-            ),
-            _buildField(
-              "Contact Number",
-              contactController,
-              type: TextInputType.phone,
-              formatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(11),
-              ],
-            ),
+            _buildField("Experience (Years)", experienceController,
+                type: TextInputType.number),
+            _buildField("Skills", expertiseController),
+            _buildField("Hourly Rate (PKR)", rateController,
+                type: TextInputType.number),
+            _buildField("Contact Number", contactController,
+                type: TextInputType.phone,
+                formatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ]),
             _buildField("Role", roleController, readOnly: true),
             if (_currentAddress != null)
               _buildField(
-                "Live Location",
-                TextEditingController(text: _currentAddress),
-                readOnly: true,
-              ),
+                  "Live Location", TextEditingController(text: _currentAddress),
+                  readOnly: true),
             SizedBox(height: 30),
             ElevatedButton(
               onPressed: _submitProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
+                backgroundColor: Colors.yellow,
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
               ),
-              child: Text("Save Profile"),
+              child:
+                  Text("Save Profile", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
