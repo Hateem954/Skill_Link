@@ -1412,7 +1412,7 @@ class _AppointmentListState extends State<AppointmentList> {
                                         onPressed: () =>
                                             updateAppointmentStatus(
                                                 appointmentId, 'accept'),
-                                        child: Text('accept'),
+                                        child: Text('Accept'),
                                       ),
                                       ElevatedButton(
                                         style: ElevatedButton.styleFrom(
