@@ -1229,6 +1229,47 @@ class _AppointmentListState extends State<AppointmentList> {
     setState(() {});
   }
 
+  // Future<void> fetchUserNames(List<dynamic> appointments, String token) async {
+  //   Set<int> userIds = {
+  //     for (var a in appointments)
+  //       if (a['user_p_id'] != null) a['user_p_id'] as int
+  //   };
+
+  //   for (int id in userIds) {
+  //     if (!userNames.containsKey(id)) {
+  //       try {
+  //         final url = Uri.parse('$baseUrl/api/users/$id');
+  //         final res = await http.get(
+  //           url,
+  //           headers: {
+  //             'Authorization': 'Bearer $token',
+  //             'Accept': 'application/json',
+  //           },
+  //         );
+
+  //         print('Fetching user ID: $id');
+  //         print('Status code: ${res.statusCode}');
+  //         print('Response body: ${res.body}');
+
+  //         if (res.statusCode == 200) {
+  //           final data = json.decode(res.body);
+  //           final user = data['data'];
+  //           userNames[id] =
+  //               user != null && user['name'] != null ? user['name'] : 'Unknown';
+  //         } else {
+  //           userNames[id] = 'Unknown';
+  //           print('Failed to fetch user $id: Status ${res.statusCode}');
+  //         }
+  //       } catch (e) {
+  //         userNames[id] = 'Unknown';
+  //         print('Exception while fetching user $id: $e');
+  //       }
+  //     }
+  //   }
+
+  //   setState(() {});
+  // }
+
   Future<void> downloadAndOpenImage(String fileName) async {
     if (Platform.isAndroid) {
       int sdkInt = androidInfo.version.sdkInt ?? 0;
@@ -1353,7 +1394,7 @@ class _AppointmentListState extends State<AppointmentList> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "User: $userName",
+                                  "User-Name: $userName",
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
