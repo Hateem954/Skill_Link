@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:plumber_project/pages/userservice/electricianmodel.dart'; // <-- Updated model
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:lottie/lottie.dart';
+
+import 'package:skill_link/pages/Apis.dart';
+import 'package:skill_link/pages/userservice/electricianmodel.dart';
+// import 'package:plumber_project/pages/userservice/electrician_detail_page.dart';
+
+final Color darkBlue = Color(0xFF003E6B);
+final Color tealBlue = Color(0xFF00A8A8);
 
 class ElectricianPage extends StatefulWidget {
   @override
@@ -12,29 +21,57 @@ class ElectricianPage extends StatefulWidget {
 class _ElectricianPageState extends State<ElectricianPage> {
   List<Electrician> _electricians = [];
   bool _loading = true;
+  bool _showFindingScreen = true;
   String? _token;
+  Position? _userPosition;
 
   @override
   void initState() {
     super.initState();
-    loadTokenAndFetch();
+    getUserLocationAndFetch();
   }
 
-  Future<void> loadTokenAndFetch() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('token');
-    if (_token != null) {
-      fetchElectricians();
-    } else {
-      setState(() => _loading = false);
-      _showError('Authentication token missing. Please login again.');
+  Future<void> getUserLocationAndFetch() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showError('Location services are disabled.');
+      return;
     }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showError('Location permission denied.');
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showError('Location permission is permanently denied.');
+      return;
+    }
+
+    _userPosition = await Geolocator.getCurrentPosition();
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('bearer_token');
+
+    if (_token != null && _token!.isNotEmpty) {
+      await fetchElectriciansWithinRadius();
+    } else {
+      _showError('Unable to retrieve your session. Please log in again.');
+    }
+
+    setState(() {
+      _showFindingScreen = false;
+    });
   }
 
-  Future<void> fetchElectricians() async {
+  Future<void> fetchElectriciansWithinRadius() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/profile'),
+        Uri.parse('$baseUrl/api/profile'),
         headers: {
           'Authorization': 'Bearer $_token',
           'Accept': 'application/json',
@@ -43,34 +80,55 @@ class _ElectricianPageState extends State<ElectricianPage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List<dynamic> allProfiles = data['data'];
 
-        if (data != null && data['data'] != null && data['data'] is List) {
-          final List<dynamic> allProfiles = data['data'];
+        List<Electrician> nearbyElectricians = [];
 
-          final electriciansJson =
-              allProfiles
-                  .where((profile) => profile['role'] == 'electrician')
-                  .toList();
+        for (var profile in allProfiles) {
+          if (profile['role'] == 'electrician' &&
+              profile['service_area'] != null) {
+            String serviceArea = profile['service_area'];
 
-          setState(() {
-            _electricians =
-                electriciansJson
-                    .map((json) => Electrician.fromJson(json))
-                    .toList();
-            _loading = false;
-          });
-        } else {
-          setState(() => _loading = false);
-          _showError('Invalid data format received from server.');
+            try {
+              List<Location> locations = await locationFromAddress(serviceArea);
+              if (locations.isNotEmpty) {
+                double distance = Geolocator.distanceBetween(
+                  _userPosition!.latitude,
+                  _userPosition!.longitude,
+                  locations.first.latitude,
+                  locations.first.longitude,
+                );
+
+                if (distance <= 5000) {
+                  if (profile['electrician_image'] != null &&
+                      !profile['electrician_image']
+                          .toString()
+                          .startsWith('http')) {
+                    profile['electrician_image'] =
+                        '$baseUrl/uploads/electrician_image/${profile['electrician_image']}';
+                  }
+
+                  nearbyElectricians.add(Electrician.fromJson(profile));
+                }
+              }
+            } catch (e) {
+              print('Geocoding failed for $serviceArea: $e');
+              continue;
+            }
+          }
         }
+
+        setState(() {
+          _electricians = nearbyElectricians;
+          _loading = false;
+        });
       } else {
         setState(() => _loading = false);
         _showError('Server error: ${response.statusCode}');
       }
     } catch (e) {
       setState(() => _loading = false);
-      _showError('Failed to fetch electricians. Please check your connection.');
-      print('Error fetching electricians: $e');
+      _showError('Failed to fetch electricians.');
     }
   }
 
@@ -83,40 +141,93 @@ class _ElectricianPageState extends State<ElectricianPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Electrician Services')),
-      body:
-          _loading
-              ? Center(child: CircularProgressIndicator())
-              : _electricians.isEmpty
-              ? Center(child: Text('No electricians found.'))
-              : ListView.builder(
-                itemCount: _electricians.length,
-                itemBuilder: (context, index) {
-                  final electrician = _electricians[index];
-                  return Card(
-                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage:
-                            electrician.electricianImage != null &&
-                                    electrician.electricianImage.isNotEmpty
-                                ? NetworkImage(
-                                  'http://10.0.2.2:8000/uploads/electrician_image/${electrician.electricianImage}',
-                                )
-                                : AssetImage(
-                                      'assets/images/default_profile.png',
-                                    )
-                                    as ImageProvider, // Default local image
-                      ),
-                      title: Text(electrician.fullName),
-                      subtitle: Text(
-                        '${electrician.experience} years experience',
-                      ),
-                      trailing: Text('\RS:${electrician.hourlyRate}/hr'),
-                    ),
-                  );
-                },
+      backgroundColor: darkBlue,
+      appBar: AppBar(
+        title: Text('Electrician Services'),
+        backgroundColor: tealBlue,
+      ),
+      body: _showFindingScreen
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Lottie.asset("assets/animation/finding_providers.json"),
+                  SizedBox(height: 20),
+                  Text(
+                    "Finding nearby electricians...",
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ],
               ),
+            )
+          : _loading
+              ? Center(child: CircularProgressIndicator(color: tealBlue))
+              : _electricians.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No nearby electricians found.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _electricians.length,
+                      itemBuilder: (context, index) {
+                        final electrician = _electricians[index];
+                        return Card(
+                          color: Colors.white,
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          child: ListTile(
+                            // onTap: () {
+                            //   Navigator.push(
+                            //     context,
+                            //     MaterialPageRoute(
+                            //       builder: (context) => ElectricianDetailPage(electrician: electrician),
+                            //     ),
+                            //   );
+                            // },
+                            leading: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.grey[200],
+                              child: ClipOval(
+                                child: Image.network(
+                                  electrician.electricianImage ?? '',
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/placeholder.png',
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              electrician.fullName,
+                              style: TextStyle(
+                                color: darkBlue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${electrician.experience} years experience',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                            trailing: Text(
+                              'Rs:${electrician.hourlyRate}/hr',
+                              style: TextStyle(
+                                color: tealBlue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
     );
   }
 }
