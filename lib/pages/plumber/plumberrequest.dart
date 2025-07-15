@@ -1394,7 +1394,7 @@ class _AppointmentListState extends State<AppointmentList> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "User: $userName",
+                                  "User-Name: $userName",
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
