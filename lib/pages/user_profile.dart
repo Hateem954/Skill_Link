@@ -979,9 +979,367 @@
 
 
 
+// is code may sirf save nhi hoo rha ahai data local storage may
+
+// import 'dart:convert';
+// import 'dart:io';
+// import 'dart:math';
+// import 'package:file_picker/file_picker.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:image_picker/image_picker.dart';
+// import 'package:skill_link/pages/Apis.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:geocoding/geocoding.dart';
+// import 'package:permission_handler/permission_handler.dart';
+// import 'package:skill_link/pages/dashboard.dart';
+
+// class UserProfilePage extends StatefulWidget {
+//   final VoidCallback? onSuccess;
+//   const UserProfilePage({super.key, this.onSuccess});
+
+//   @override
+//   _UserProfilePageState createState() => _UserProfilePageState();
+// }
+
+// class _UserProfilePageState extends State<UserProfilePage> {
+//   final TextEditingController nameController = TextEditingController();
+//   final TextEditingController bioController = TextEditingController();
+//   final TextEditingController locationController = TextEditingController();
+//   final TextEditingController contactController = TextEditingController();
+//   final TextEditingController roleController = TextEditingController();
+
+//   final FocusNode locationFocusNode = FocusNode();
+//   File? _profileImage;
+//   List<dynamic> _placeList = [];
+//   String _sessionToken = "1234567890";
+//   String? _bearerToken;
+
+//   Position? _currentPosition;
+//   String? _currentAddress;
+
+//   final Color darkBlue = const Color(0xFF003E6B);
+//   final Color tealBlue = const Color(0xFF00A8A8);
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadRoleAndToken();
+//     _getLocationAndAddress();
+//     locationController.addListener(() => _onChanged());
+//     locationFocusNode.addListener(() {
+//       if (!locationFocusNode.hasFocus) {
+//         setState(() => _placeList = []);
+//       }
+//     });
+//   }
+
+//   Future<void> _loadRoleAndToken() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     setState(() {
+//       roleController.text = prefs.getString('role') ?? 'Unknown';
+//       _bearerToken = prefs.getString('bearer_token');
+//     });
+//   }
+
+//   Future<void> _getLocationAndAddress() async {
+//     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+//     if (!serviceEnabled) return;
+
+//     LocationPermission permission = await Geolocator.checkPermission();
+//     if (permission == LocationPermission.denied) {
+//       permission = await Geolocator.requestPermission();
+//       if (permission == LocationPermission.denied) return;
+//     }
+//     if (permission == LocationPermission.deniedForever) return;
+
+//     try {
+//       Position position = await Geolocator.getCurrentPosition(
+//         desiredAccuracy: LocationAccuracy.high,
+//       );
+//       List<Placemark> placemarks =
+//           await placemarkFromCoordinates(position.latitude, position.longitude);
+
+//       if (placemarks.isNotEmpty) {
+//         final place = placemarks.first;
+//         final address =
+//             "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+//         setState(() {
+//           _currentPosition = position;
+//           _currentAddress = address;
+//           locationController.text = address;
+//         });
+//       }
+//     } catch (e) {
+//       print("Error fetching location: $e");
+//     }
+//   }
+
+//   void _onChanged() {
+//     if (_sessionToken == "1234567890") {
+//       _sessionToken = Random().nextInt(100000).toString();
+//     }
+//     getSuggestion(locationController.text);
+//   }
+
+//   void getSuggestion(String input) async {
+//     const String PLACES_API_KEY = "YOUR_GOOGLE_API_KEY_HERE";
+//     String baseURL =
+//         'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+//     String request =
+//         '$baseURL?input=$input&key=$PLACES_API_KEY&sessiontoken=$_sessionToken';
+//     try {
+//       var response = await http.get(Uri.parse(request));
+//       if (response.statusCode == 200) {
+//         setState(() {
+//           _placeList = json.decode(response.body)['predictions'];
+//         });
+//       }
+//     } catch (e) {
+//       print("Error getting suggestions: $e");
+//     }
+//   }
+
+//   Future<void> _pickImageOption() async {
+//     showModalBottomSheet(
+//       context: context,
+//       builder: (_) => SafeArea(
+//         child: Wrap(
+//           children: [
+//             ListTile(
+//               leading: Icon(Icons.camera_alt),
+//               title: Text('Camera'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickImage(ImageSource.camera);
+//               },
+//             ),
+//             ListTile(
+//               leading: Icon(Icons.photo_library),
+//               title: Text('Gallery'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickImage(ImageSource.gallery);
+//               },
+//             ),
+//             ListTile(
+//               leading: Icon(Icons.insert_drive_file),
+//               title: Text('File'),
+//               onTap: () {
+//                 Navigator.pop(context);
+//                 _pickImageFromFile();
+//               },
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Future<void> _pickImage(ImageSource source) async {
+//     final pickedFile = await ImagePicker().pickImage(source: source);
+//     if (pickedFile != null) {
+//       setState(() => _profileImage = File(pickedFile.path));
+//       widget.onSuccess?.call();
+//     }
+//   }
+
+//   Future<void> _pickImageFromFile() async {
+//     final result = await FilePicker.platform.pickFiles(type: FileType.image);
+//     if (result != null && result.files.single.path != null) {
+//       setState(() => _profileImage = File(result.files.single.path!));
+//       widget.onSuccess?.call();
+//     }
+//   }
+
+//   Future<void> _submitProfile() async {
+//     if (_bearerToken == null) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text("Bearer token not found")),
+//       );
+//       return;
+//     }
+
+//     var uri = Uri.parse("$baseUrl/api/profile/");
+//     var request = http.MultipartRequest("POST", uri);
+//     request.headers['Authorization'] = 'Bearer $_bearerToken';
+
+//     request.fields['full_name'] = nameController.text;
+//     request.fields['short_bio'] = bioController.text;
+//     request.fields['location'] = locationController.text;
+//     request.fields['contact_number'] = contactController.text;
+//     request.fields['role'] = roleController.text;
+
+//     if (_currentPosition != null) {
+//       request.fields['latitude'] = _currentPosition!.latitude.toString();
+//       request.fields['longitude'] = _currentPosition!.longitude.toString();
+//     }
+
+//     if (_profileImage != null) {
+//       request.files.add(
+//         await http.MultipartFile.fromPath('user_image', _profileImage!.path),
+//       );
+//     }
+
+//     try {
+//       var response = await request.send();
+//       if (response.statusCode == 200 || response.statusCode == 201) {
+//         Navigator.pushReplacement(
+//           context,
+//           MaterialPageRoute(builder: (context) => HomeScreen()),
+//         );
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Failed to upload profile (Status: ${response.statusCode})")),
+//         );
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text("Error uploading profile : ${e.toString()}")),
+//       );
+//     }
+//   }
+
+//   Widget _buildLabeledTextField(
+//     String label,
+//     TextEditingController controller, {
+//     TextInputType type = TextInputType.text,
+//     List<TextInputFormatter>? inputFormatters,
+//     FocusNode? focusNode,
+//     bool readOnly = false,
+//   }) {
+//     return Padding(
+//       padding: const EdgeInsets.only(bottom: 20),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(label,
+//               style: TextStyle(
+//                   fontWeight: FontWeight.bold,
+//                   fontSize: 16,
+//                   color: Colors.white)),
+//           SizedBox(height: 8),
+//           TextField(
+//             controller: controller,
+//             keyboardType: type,
+//             focusNode: focusNode,
+//             readOnly: readOnly,
+//             inputFormatters: inputFormatters,
+//             style: TextStyle(color: Colors.white),
+//             decoration: InputDecoration(
+//               border: OutlineInputBorder(),
+//               focusedBorder: OutlineInputBorder(
+//                 borderSide: BorderSide(color: Colors.white),
+//               ),
+//               hintStyle: TextStyle(color: Colors.white70),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     locationFocusNode.dispose();
+//     nameController.dispose();
+//     bioController.dispose();
+//     locationController.dispose();
+//     contactController.dispose();
+//     roleController.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: darkBlue,
+//       appBar: AppBar(
+//         title: Text("User Profile", style: TextStyle(color: Colors.white)),
+//         backgroundColor: tealBlue,
+//         iconTheme: IconThemeData(color: Colors.white),
+//       ),
+//       body: SingleChildScrollView(
+//         padding: EdgeInsets.all(16),
+//         child: Column(
+//           children: [
+//             Center(
+//               child: Column(
+//                 children: [
+//                   CircleAvatar(
+//                     radius: 50,
+//                     backgroundImage: _profileImage != null
+//                         ? FileImage(_profileImage!)
+//                         : null,
+//                     backgroundColor: Colors.grey,
+//                     child: _profileImage == null
+//                         ? Icon(Icons.person, size: 60, color: Colors.white)
+//                         : null,
+//                   ),
+//                   SizedBox(height: 10),
+//                   TextButton.icon(
+//                     onPressed: _pickImageOption,
+//                     icon: Icon(Icons.camera_alt, color: Colors.white),
+//                     label: Text("Update Photo",
+//                         style: TextStyle(color: Colors.white)),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             SizedBox(height: 20),
+//             _buildLabeledTextField("Full Name", nameController),
+//             _buildLabeledTextField("Short Bio", bioController),
+//             _buildLabeledTextField("Location", locationController,
+//                 focusNode: locationFocusNode),
+//             if (_placeList.isNotEmpty)
+//               ListView.builder(
+//                 shrinkWrap: true,
+//                 physics: NeverScrollableScrollPhysics(),
+//                 itemCount: _placeList.length,
+//                 itemBuilder: (context, index) {
+//                   return ListTile(
+//                     title: Text(
+//                       _placeList[index]["description"],
+//                       style: TextStyle(color: Colors.white),
+//                     ),
+//                     onTap: () {
+//                       locationController.text =
+//                           _placeList[index]["description"];
+//                       setState(() => _placeList = []);
+//                     },
+//                   );
+//                 },
+//               ),
+//             _buildLabeledTextField("Contact Number", contactController,
+//                 type: TextInputType.phone,
+//                 inputFormatters: [
+//                   FilteringTextInputFormatter.digitsOnly,
+//                   LengthLimitingTextInputFormatter(11),
+//                 ]),
+//             _buildLabeledTextField("Role", roleController, readOnly: true),
+//             SizedBox(height: 30),
+//             Center(
+//               child: ElevatedButton(
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: Colors.yellow,
+//                   foregroundColor: Colors.black,
+//                   padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+//                 ),
+//                 onPressed: _submitProfile,
+//                 child: Text("Save Profile", style: TextStyle(fontSize: 16)),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 
-
+// Required imports
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -1155,7 +1513,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  Future<void> _submitProfile() async {
+  // ✅ Updated submit function with confirmation dialog
+ Future<void> _submitProfile() async {
     if (_bearerToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Bearer token not found")),
@@ -1193,49 +1552,30 @@ class _UserProfilePageState extends State<UserProfilePage> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to upload profile")),
+          SnackBar(
+              content: Text(
+                  "Failed to upload profile (Status: ${response.statusCode})")),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error uploading profile")),
+        SnackBar(content: Text("Error uploading profile: ${e.toString()}")),
       );
     }
   }
 
-  Widget _buildLabeledTextField(
-    String label,
-    TextEditingController controller, {
-    TextInputType type = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
-    FocusNode? focusNode,
-    bool readOnly = false,
-  }) {
+
+  // ✅ Helper for info display
+  Widget _infoRow(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.white)),
-          SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            keyboardType: type,
-            focusNode: focusNode,
-            readOnly: readOnly,
-            inputFormatters: inputFormatters,
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white),
-              ),
-              hintStyle: TextStyle(color: Colors.white70),
-            ),
+          Text("$title: ",
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          Expanded(
+            child: Text(value, style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1334,6 +1674,45 @@ class _UserProfilePageState extends State<UserProfilePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLabeledTextField(
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    FocusNode? focusNode,
+    bool readOnly = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white)),
+          SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            keyboardType: type,
+            focusNode: focusNode,
+            readOnly: readOnly,
+            inputFormatters: inputFormatters,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white),
+              ),
+              hintStyle: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
       ),
     );
   }
