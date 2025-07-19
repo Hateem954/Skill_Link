@@ -8,6 +8,7 @@ import 'package:lottie/lottie.dart';
 
 import 'package:skill_link/pages/Apis.dart';
 import 'package:skill_link/pages/userservice/electricianmodel.dart';
+import 'package:skill_link/pages/userservice/electrition_detail_page.dart';
 // import 'package:plumber_project/pages/userservice/electrician_detail_page.dart';
 
 final Color darkBlue = Color(0xFF003E6B);
@@ -174,18 +175,18 @@ class _ElectricianPageState extends State<ElectricianPage> {
                       itemBuilder: (context, index) {
                         final electrician = _electricians[index];
                         return Card(
-                          color: Colors.white,
+                          color: Colors.yellow[300],
                           margin:
                               EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           child: ListTile(
-                            // onTap: () {
-                            //   Navigator.push(
-                            //     context,
-                            //     MaterialPageRoute(
-                            //       builder: (context) => ElectricianDetailPage(electrician: electrician),
-                            //     ),
-                            //   );
-                            // },
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ElectricianDetailPage(electrician: electrician)
+                                ),
+                              );
+                            },
                             leading: CircleAvatar(
                               radius: 30,
                               backgroundColor: Colors.grey[200],

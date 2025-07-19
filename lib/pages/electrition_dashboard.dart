@@ -253,6 +253,7 @@
 // }
 
 import 'package:flutter/material.dart';
+import 'package:skill_link/pages/electrition/electritionrequest.dart';
 import 'package:skill_link/pages/electrition_cards.dart';
 import 'package:skill_link/pages/notification.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -389,6 +390,12 @@ class HomeContent extends StatelessWidget {
             title: "New requests",
             icon: Icons.assignment,
             gradientColors: [Color(0xFFF7971E), Color(0xFFFFD200)],
+             onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AppointmentList()),
+              );
+            },
           ),
           DashboardCard(
             title: "Ongoing Work",

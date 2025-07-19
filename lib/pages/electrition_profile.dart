@@ -1736,7 +1736,7 @@ class _ElectricianProfilePageState extends State<ElectricianProfilePage> {
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
               ),
               child:
-                  Text("Save Profile", style: TextStyle(color: Colors.white)),
+                  Text("Save Profile", style: TextStyle(color: Colors.black)),
             ),
           ],
         ),
