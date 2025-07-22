@@ -1224,7 +1224,27 @@ class _PlumberPageState extends State<PlumberPage> {
                                 ),
                               );
                             },
-                            leading: CircleAvatar(
+                            // leading: CircleAvatar(
+                            //   radius: 30,
+                            //   backgroundColor: Colors.grey[200],
+                            //   child: ClipOval(
+                            //     child: Image.network(
+                            //       plumber.plumberImage ?? '',
+                            //       width: 60,
+                            //       height: 60,
+                            //       fit: BoxFit.cover,
+                            //       errorBuilder: (context, error, stackTrace) {
+                            //         return Image.asset(
+                            //           'assets/images/placeholder.png',
+                            //           width: 60,
+                            //           height: 60,
+                            //           fit: BoxFit.cover,
+                            //         );
+                            //       },
+                            //     ),
+                            //   ),
+                            // ),
+                             leading: CircleAvatar(
                               radius: 30,
                               backgroundColor: Colors.grey[200],
                               child: ClipOval(
