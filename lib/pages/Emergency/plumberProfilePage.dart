@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:skill_link/pages/Emergency/Conformation.dart';
 import 'package:skill_link/pages/userservice/plumbermodel.dart';
 
-
 class PlumberProfilesByServicePage extends StatelessWidget {
   final Map<String, List<Plumber>> groupedPlumbers;
   final double latitude;
@@ -23,11 +22,11 @@ class PlumberProfilesByServicePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Available Plumbers'),
+        title: const Text('Available Plumbers'),
         backgroundColor: Colors.red,
       ),
       body: nonEmptyGroups.isEmpty
-          ? Center(child: Text('No nearby plumbers available.'))
+          ? const Center(child: Text('No nearby plumbers available.'))
           : ListView.builder(
               itemCount: nonEmptyGroups.length,
               itemBuilder: (context, index) {
@@ -36,7 +35,7 @@ class PlumberProfilesByServicePage extends StatelessWidget {
 
                 return ExpansionTile(
                   title: Text(service,
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   children: plumbers.map((plumber) {
                     return ListTile(
                       leading: CircleAvatar(
@@ -44,12 +43,19 @@ class PlumberProfilesByServicePage extends StatelessWidget {
                             ? NetworkImage(plumber.plumberImage!)
                             : null,
                         child: plumber.plumberImage == null
-                            ? Icon(Icons.person)
+                            ? const Icon(Icons.person)
                             : null,
                       ),
                       title: Text(plumber.fullName),
-                      subtitle: Text(
-                          'Rate: \$${plumber.hourlyRate.toStringAsFixed(2)}'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              'Rate: \$${plumber.hourlyRate.toStringAsFixed(2)}'),
+                          if (plumber.services.isNotEmpty)
+                            Text('Services: ${plumber.services.join(", ")}'),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.push(
                           context,

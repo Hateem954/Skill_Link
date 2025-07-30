@@ -167,4 +167,6 @@ class Plumber {
       serviceArea: json['service_area'],
     );
   }
+
+  get skill => null;
 }

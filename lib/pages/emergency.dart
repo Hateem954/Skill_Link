@@ -680,84 +680,727 @@
 //   }
 // }
 
+
+// yai code sirf emergency.dart file ke liye hai,
+// isme emergency services ka implementation hai. 
+//Ye code plumber aur electrician services ko handle karta hai
+//, user ki current location leke nearby plumbers ko fetch karta hai,
+// aur unhe group karke display karta hai. Agar koi service select ki jati hai,
+// to confirmation page par navigate karta hai. Isme error handling
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:geocoding/geocoding.dart';
+
+// import 'package:skill_link/pages/Apis.dart';
+// import 'package:skill_link/pages/Emergency/Conformation.dart';
+// import 'package:skill_link/pages/Emergency/plumberProfilePage.dart';
+// import 'package:skill_link/pages/userservice/plumbermodel.dart';
+
+// class EmergencyScreen extends StatefulWidget {
+//   @override
+//   State<EmergencyScreen> createState() => _EmergencyScreenState();
+// }
+
+// class _EmergencyScreenState extends State<EmergencyScreen> {
+//   List<Plumber> _plumbers = [];
+//   bool _loading = false;
+
+//   final List<Map<String, dynamic>> services = [
+//     {"icon": Icons.plumbing, "title": "Plumber"},
+//     {"icon": Icons.electrical_services, "title": "Electrician"},
+//   ];
+
+//   final List<String> plumberServices = const [
+//     "Washbasin Repair",
+//     "Tap Leakage Fix",
+//     "Toilet Installation",
+//     "Drain Cleaning",
+//     "Pipe Blockage",
+//   ];
+
+//   /// 🧠 FIXED: Handles service selection safely
+//   Future<void> _handleServiceTap(
+//       BuildContext context, String serviceName) async {
+//     if (serviceName != "Plumber") {
+//       if (!mounted) return;
+//       _showError('Service "$serviceName" not implemented yet.');
+//       return;
+//     }
+
+//     setState(() => _loading = true);
+
+//     try {
+//       final position = await _determinePosition(context);
+//       await fetchNearbyPlumbers(position); // Now handles navigation
+//     } catch (e) {
+//       if (!mounted) return;
+//       _showError('Something went wrong. Please try again.');
+//       print('❌ _handleServiceTap error: $e');
+//     } finally {
+//       if (mounted) setState(() => _loading = false);
+//     }
+//   }
+
+
+//   /// ✅ Group plumbers by each service
+//   Map<String, List<Plumber>> groupPlumbersByService(List<Plumber> plumbers) {
+//     final Map<String, List<Plumber>> grouped = {};
+//     for (String service in plumberServices) {
+//       grouped[service] = plumbers.where((plumber) {
+//         return plumber.services.contains(service);
+//       }).toList();
+//     }
+//     return grouped;
+//   }
+
+//   /// ✅ Fetch plumbers and filter based on distance
+//  Future<void> fetchNearbyPlumbers(Position position) async {
+//     try {
+//       final prefs = await SharedPreferences.getInstance();
+//       final token = prefs.getString('bearer_token');
+//       final userId = prefs.getInt('user_id');
+
+//       if (token == null || token.isEmpty || userId == null) {
+//         _showError('Authentication failed. Please login again.');
+//         return;
+//       }
+
+//       final response = await http.get(
+//         Uri.parse('$baseUrl/api/profile'),
+//         headers: {
+//           'Authorization': 'Bearer $token',
+//           'Accept': 'application/json',
+//         },
+//       );
+
+//       print('📡 GET /profile status: ${response.statusCode}');
+
+//       if (response.statusCode == 200) {
+//         final data = json.decode(response.body);
+//         final List<dynamic> allPlumbers = data['data'];
+
+//         List<Plumber> nearby = [];
+
+//         for (var profile in allPlumbers) {
+//           if (profile['role'] == 'plumber' && profile['service_area'] != null) {
+//             try {
+//               List<Location> locations =
+//                   await locationFromAddress(profile['service_area']);
+//               if (locations.isNotEmpty) {
+//                 double distance = Geolocator.distanceBetween(
+//                   position.latitude,
+//                   position.longitude,
+//                   locations.first.latitude,
+//                   locations.first.longitude,
+//                 );
+
+//                 if (distance <= 5000) {
+//                   if (profile['plumber_image'] != null &&
+//                       !profile['plumber_image'].toString().startsWith('http')) {
+//                     profile['plumber_image'] =
+//                         '$baseUrl/uploads/plumber_image/${profile['plumber_image']}';
+//                   }
+
+//                   nearby.add(Plumber.fromJson(profile));
+//                 }
+//               }
+//             } catch (e) {
+//               print('⚠️ Location error for ${profile['service_area']}: $e');
+//             }
+//           }
+//         }
+
+//         if (mounted) {
+//           setState(() {
+//             _plumbers = nearby;
+//           });
+//         }
+
+//         if (nearby.isNotEmpty && mounted) {
+//           final selectedPlumber = nearby.first;
+
+//           Future.microtask(() {
+//             if (!mounted) return;
+//             Navigator.of(context).push(
+//               MaterialPageRoute(
+//                 builder: (_) => ConfirmationPage(
+//                   plumber: selectedPlumber,
+//                   latitude: position.latitude,
+//                   longitude: position.longitude,
+//                 ),
+//               ),
+//             );
+//           });
+//         } else {
+//           _showError('No nearby plumbers found.');
+//         }
+//       } else {
+//         _showError('Server error: ${response.statusCode}');
+//       }
+//     } catch (e) {
+//       _showError('Failed to fetch plumbers.');
+//       print('❌ Exception in fetchNearbyPlumbers: $e');
+//     }
+//   }
+
+
+//   /// ✅ Get current position safely
+//   Future<Position> _determinePosition(BuildContext context) async {
+//     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+//     if (!serviceEnabled) throw Exception('Location services are disabled.');
+
+//     LocationPermission permission = await Geolocator.checkPermission();
+//     if (permission == LocationPermission.denied) {
+//       permission = await Geolocator.requestPermission();
+//       if (permission == LocationPermission.denied) {
+//         throw Exception('Location permission denied.');
+//       }
+//     }
+
+//     if (permission == LocationPermission.deniedForever) {
+//       throw Exception('Location permission permanently denied.');
+//     }
+
+//     return await Geolocator.getCurrentPosition();
+//   }
+
+//   /// ✅ Show snack bar error
+//   void _showError(String message) {
+//     if (mounted) {
+//       ScaffoldMessenger.of(context)
+//           .showSnackBar(SnackBar(content: Text(message)));
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text('Emergency Services'),
+//         backgroundColor: Colors.red,
+//       ),
+//       body: _loading
+//           ? Center(child: CircularProgressIndicator())
+//           : ListView.separated(
+//               itemCount: services.length,
+//               separatorBuilder: (context, index) => Divider(),
+//               itemBuilder: (context, index) {
+//                 final service = services[index];
+//                 return ListTile(
+//                   leading: Icon(service['icon'] as IconData, color: Colors.red),
+//                   title: Text(service['title']),
+//                   trailing: Icon(Icons.arrow_forward_ios, size: 16),
+//                   onTap: () => _handleServiceTap(context, service['title']),
+//                 );
+//               },
+//             ),
+//     );
+//   }
+// }
+
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:skill_link/pages/Apis.dart';
+// import 'package:skill_link/pages/Emergency/plumberProfilePage.dart';
+// import 'package:skill_link/pages/userservice/plumbermodel.dart';
+
+
+// class EmergencyScreen extends StatefulWidget {
+//   const EmergencyScreen({super.key});
+
+//   @override
+//   State<EmergencyScreen> createState() => _EmergencyScreenState();
+// }
+
+// class _EmergencyScreenState extends State<EmergencyScreen> {
+//   bool _loading = false;
+//   List<Map<String, dynamic>> plumberData = [];
+
+//   late BuildContext safeContext; // ✅ Safe context reference
+
+//   final List<Map<String, dynamic>> services = [
+//     {'name': 'Plumber', 'icon': Icons.plumbing},
+//     {'name': 'Electrician', 'icon': Icons.electrical_services},
+//     {'name': 'Carpenter', 'icon': Icons.handyman},
+//   ];
+
+//   final List<String> plumberServices = [
+//     'Tap Leakage Fix',
+//     'Drain Cleaning',
+//     'Toilet Repair',
+//     'Pipe Blockage',
+//     'Bathroom Fitting',
+//     'Water Tank Cleaning',
+//   ];
+
+//   @override
+//   void didChangeDependencies() {
+//     super.didChangeDependencies();
+//     safeContext = context; // ✅ Assign safe context once
+//   }
+
+//   Future<Position> _determinePosition() async {
+//     bool serviceEnabled;
+//     LocationPermission permission;
+
+//     serviceEnabled = await Geolocator.isLocationServiceEnabled();
+//     if (!serviceEnabled) {
+//       _showError('Location services are disabled.');
+//       throw Exception('Location disabled');
+//     }
+
+//     permission = await Geolocator.checkPermission();
+//     if (permission == LocationPermission.denied) {
+//       permission = await Geolocator.requestPermission();
+//       if (permission == LocationPermission.denied) {
+//         _showError('Location permissions are denied');
+//         throw Exception('Permission denied');
+//       }
+//     }
+
+//     if (permission == LocationPermission.deniedForever) {
+//       _showError('Location permissions are permanently denied');
+//       throw Exception('Permission denied forever');
+//     }
+
+//     return await Geolocator.getCurrentPosition();
+//   }
+
+
+// yai function accurate run hooo raha hi sirf profile show nhi hoo rahi
+// Future<void> fetchNearbyPlumbers({
+//     required String selectedService,
+//     required Position position,
+//   }) async {
+//     try {
+//       final prefs = await SharedPreferences.getInstance();
+//       final token = prefs.getString('bearer_token');
+
+//       if (token == null) {
+//         _showError('Authentication token missing. Please log in again.');
+//         return;
+//       }
+
+//       final response = await http.get(
+//         Uri.parse('$baseUrl/api/profile'),
+//         headers: {
+//           'Authorization': 'Bearer $token',
+//           'Accept': 'application/json',
+//         },
+//       );
+
+//       print('Status Code: ${response.statusCode}');
+//       print('Response Body: ${response.body}');
+
+//       if (response.statusCode == 200) {
+//         final decoded = json.decode(response.body);
+
+//         print("Decoded body type: ${decoded.runtimeType}");
+//         print("Decoded body content: $decoded");
+
+//         List<dynamic> data;
+
+//         if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+//           data = decoded['data'];
+//         } else {
+//           _showError('Unexpected API response format.');
+//           return;
+//         }
+
+//         final List<Map<String, dynamic>> filteredPlumbers = [];
+
+//         for (var item in data) {
+//           if (item is! Map<String, dynamic>) continue;
+
+//           final role = item['role'];
+//           final skill = item['skill']?.toString().toLowerCase() ?? '';
+//           final serviceArea = item['service_area'];
+
+//           if (role != 'plumber') continue;
+
+//           if (!skill.contains(selectedService.toLowerCase())) continue;
+
+//           // If service_area contains lat/lng map, extract them
+//           if (serviceArea is Map<String, dynamic> &&
+//               serviceArea['lat'] != null &&
+//               serviceArea['lng'] != null) {
+//             final double? plumberLat =
+//                 double.tryParse(serviceArea['lat'].toString());
+//             final double? plumberLng =
+//                 double.tryParse(serviceArea['lng'].toString());
+
+//             if (plumberLat == null || plumberLng == null) continue;
+
+//             final double distance = Geolocator.distanceBetween(
+//               position.latitude,
+//               position.longitude,
+//               plumberLat,
+//               plumberLng,
+//             );
+
+//             if (distance > 10000) continue; // Skip if too far
+//           }
+
+//           filteredPlumbers.add(Map<String, dynamic>.from(item));
+//         }
+
+//         print("Matched Plumbers: ${filteredPlumbers.length}");
+
+//         if (!mounted) return;
+//         setState(() {
+//           plumberData = filteredPlumbers;
+//         });
+//       } else {
+//         _showError('Failed to fetch data. Status code: ${response.statusCode}');
+//       }
+//     } catch (e, stackTrace) {
+//       print('Error fetching plumbers: $e');
+//       print(stackTrace);
+//       if (mounted) {
+//         _showError('Exception: ${e.toString()}');
+//       }
+//     }
+//   }
+
+
+// Future<void> fetchNearbyPlumbers({
+//   required String selectedService,
+//   required Position position,
+//   required BuildContext context,
+// }) async {
+//   try {
+//     final prefs = await SharedPreferences.getInstance();
+//     final token = prefs.getString('bearer_token');
+
+//     if (token == null) {
+//       _showError( 'Authentication token missing. Please log in again.');
+//       return;
+//     }
+
+//     final response = await http.get(
+//       Uri.parse('$baseUrl/api/profile'),
+//       headers: {
+//         'Authorization': 'Bearer $token',
+//         'Accept': 'application/json',
+//       },
+//     );
+
+//     if (response.statusCode != 200) {
+//       _showError( 'Failed to fetch data. Status: ${response.statusCode}');
+//       return;
+//     }
+
+//     final decoded = json.decode(response.body);
+//     List<dynamic> data;
+
+//     if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+//       data = decoded['data'];
+//     } else {
+//       _showError( 'Unexpected API response format.');
+//       return;
+//     }
+
+//     final List<Map<String, dynamic>> matchedPlumbers = [];
+
+//     for (var item in data) {
+//       if (item is! Map<String, dynamic>) continue;
+//       final role = item['role'];
+//       final skillRaw = item['skill'];
+//       final serviceAreaRaw = item['service_area'];
+
+//       if (role != 'plumber') continue;
+
+//       List<String> skills = [];
+//       if (skillRaw is String) {
+//         skills = skillRaw.split(',').map((s) => s.trim().toLowerCase()).toList();
+//       } else if (skillRaw is List) {
+//         skills = skillRaw.map((s) => s.toString().trim().toLowerCase()).toList();
+//       }
+
+//       if (!skills.contains(selectedService.toLowerCase())) continue;
+
+//       double? lat;
+//       double? lng;
+
+//       if (serviceAreaRaw is Map<String, dynamic>) {
+//         lat = double.tryParse(serviceAreaRaw['lat']?.toString() ?? '');
+//         lng = double.tryParse(serviceAreaRaw['lng']?.toString() ?? '');
+//       } else if (serviceAreaRaw is String) {
+//         final coords = await geocodeAddress(serviceAreaRaw);
+//         if (coords != null) {
+//           lat = coords.latitude;
+//           lng = coords.longitude;
+//         }
+//       }
+
+//       if (lat != null && lng != null) {
+//         final distanceMeters = Geolocator.distanceBetween(
+//           position.latitude,
+//           position.longitude,
+//           lat,
+//           lng,
+//         );
+
+//         if (distanceMeters <= 5000) {
+//           matchedPlumbers.add(Map<String, dynamic>.from(item));
+//         }
+//       }
+//     }
+
+//     if (matchedPlumbers.isEmpty) {
+//       _showError( 'No plumbers found within 5km matching "$selectedService".');
+//       return;
+//     }
+
+//     Map<String, List<Plumber>> grouped = {};
+//     for (var plumberMap in matchedPlumbers) {
+//       Plumber plumber = Plumber.fromJson(plumberMap);
+//       for (var service in plumber.services) {
+//         grouped.putIfAbsent(service, () => []);
+//         grouped[service]!.add(plumber);
+//       }
+//     }
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (_) => PlumberProfilesByServicePage(
+//           groupedPlumbers: grouped,
+//           latitude: position.latitude,
+//           longitude: position.longitude,
+//         ),
+//       ),
+//     );
+//   } catch (e, stack) {
+//     print('❌ Exception: $e');
+//     print(stack);
+//     _showError( 'Error occurred: ${e.toString()}');
+//   }
+// }
+
+//   void _showError(String message) {
+//     if (!mounted) return;
+//     ScaffoldMessenger.of(safeContext).showSnackBar(
+//       SnackBar(content: Text(message)),
+//     );
+//   }
+
+//   void _handleServiceTap(String serviceName) {
+//     if (serviceName == "Plumber") {
+//       _showPlumberServiceSelection();
+//     } else {
+//       _showError('Service "$serviceName" not implemented yet.');
+//     }
+//   }
+
+//   void _showPlumberServiceSelection() {
+//     showModalBottomSheet(
+//       context: context,
+//       builder: (bottomSheetContext) {
+//         return ListView.builder(
+//           shrinkWrap: true,
+//           itemCount: plumberServices.length,
+//           itemBuilder: (context, index) {
+//             final service = plumberServices[index];
+//             return ListTile(
+//               title: Text(service),
+//               onTap: () async {
+//                 Navigator.pop(bottomSheetContext);
+//                 if (!mounted) return;
+//                 setState(() => _loading = true);
+//                 try {
+//                   final position = await _determinePosition();
+//                   if (!mounted) return;
+//                   await fetchNearbyPlumbers(
+//                     selectedService: service,
+//                     position: position,
+//                   );
+//                 } catch (e) {
+//                   if (mounted) {
+//                     _showError('Something went wrong. Please try again.');
+//                   }
+//                 } finally {
+//                   if (mounted) setState(() => _loading = false);
+//                 }
+//               },
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('Select a Service'),
+//         backgroundColor: Colors.blue,
+//         foregroundColor: Colors.white,
+//       ),
+//       body: _loading
+//           ? const Center(child: CircularProgressIndicator())
+//           : GridView.count(
+//               crossAxisCount: 2,
+//               childAspectRatio: 1,
+//               padding: const EdgeInsets.all(16),
+//               crossAxisSpacing: 16,
+//               mainAxisSpacing: 16,
+//               children: services.map((service) {
+//                 return GestureDetector(
+//                   onTap: () => _handleServiceTap(service['name']),
+//                   child: Card(
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(16),
+//                     ),
+//                     elevation: 4,
+//                     child: Column(
+//                       mainAxisAlignment: MainAxisAlignment.center,
+//                       children: [
+//                         Icon(service['icon'], size: 48),
+//                         const SizedBox(height: 8),
+//                         Text(service['name'],
+//                             style: const TextStyle(fontSize: 16))
+//                       ],
+//                     ),
+//                   ),
+//                 );
+//               }).toList(),
+//             ),
+//     );
+//   }
+// }
+
+
+
+
+
+
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geocoding/geocoding.dart';
-
 import 'package:skill_link/pages/Apis.dart';
-import 'package:skill_link/pages/Emergency/Conformation.dart';
 import 'package:skill_link/pages/Emergency/plumberProfilePage.dart';
 import 'package:skill_link/pages/userservice/plumbermodel.dart';
 
 class EmergencyScreen extends StatefulWidget {
+  const EmergencyScreen({super.key});
+
   @override
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
 class _EmergencyScreenState extends State<EmergencyScreen> {
-  List<Plumber> _plumbers = [];
   bool _loading = false;
+  List<Map<String, dynamic>> plumberData = [];
+  late BuildContext safeContext;
 
   final List<Map<String, dynamic>> services = [
-    {"icon": Icons.plumbing, "title": "Plumber"},
-    {"icon": Icons.electrical_services, "title": "Electrician"},
+    {'name': 'Plumber', 'icon': Icons.plumbing},
+    {'name': 'Electrician', 'icon': Icons.electrical_services},
+    {'name': 'Carpenter', 'icon': Icons.handyman},
   ];
 
-  final List<String> plumberServices = const [
-    "Washbasin Repair",
-    "Tap Leakage Fix",
-    "Toilet Installation",
-    "Drain Cleaning",
-    "Pipe Blockage",
+  final List<String> plumberServices = [
+    'Tap Leakage Fix',
+    'Drain Cleaning',
+    'Toilet Repair',
+    'Pipe Blockage',
+    'Bathroom Fitting',
+    'Water Tank Cleaning',
   ];
 
-  /// 🧠 FIXED: Handles service selection safely
-  Future<void> _handleServiceTap(
-      BuildContext context, String serviceName) async {
-    if (serviceName != "Plumber") {
-      if (!mounted) return;
-      _showError('Service "$serviceName" not implemented yet.');
-      return;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    safeContext = context;
+  }
+
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showError('Location services are disabled.');
+      throw Exception('Location disabled');
     }
 
-    setState(() => _loading = true);
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showError('Location permissions are denied');
+        throw Exception('Permission denied');
+      }
+    }
 
+    if (permission == LocationPermission.deniedForever) {
+      _showError('Location permissions are permanently denied');
+      throw Exception('Permission denied forever');
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  Future<Position?> geocodeAddress(String address) async {
     try {
-      final position = await _determinePosition(context);
-      await fetchNearbyPlumbers(position); // Now handles navigation
+      final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=$address&format=json');
+      final response = await http.get(url, headers: {
+        'User-Agent': 'FlutterApp',
+      });
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          final firstResult = data[0];
+          final lat = double.tryParse(firstResult['lat']);
+          final lon = double.tryParse(firstResult['lon']);
+          if (lat != null && lon != null) {
+            return Position(
+              latitude: lat,
+              longitude: lon,
+              accuracy: 0,
+              altitude: 0,
+              altitudeAccuracy: 0,
+              heading: 0,
+              headingAccuracy: 0,
+              speed: 0,
+              speedAccuracy: 0,
+              timestamp: DateTime.now(),
+              isMocked: true,
+            );
+          }
+        }
+      } else {
+        print('❌ Geocoding failed: ${response.statusCode}');
+      }
     } catch (e) {
-      if (!mounted) return;
-      _showError('Something went wrong. Please try again.');
-      print('❌ _handleServiceTap error: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      print('❌ Geocoding exception: $e');
     }
+    return null;
   }
 
-
-  /// ✅ Group plumbers by each service
-  Map<String, List<Plumber>> groupPlumbersByService(List<Plumber> plumbers) {
-    final Map<String, List<Plumber>> grouped = {};
-    for (String service in plumberServices) {
-      grouped[service] = plumbers.where((plumber) {
-        return plumber.services.contains(service);
-      }).toList();
-    }
-    return grouped;
-  }
-
-  /// ✅ Fetch plumbers and filter based on distance
- Future<void> fetchNearbyPlumbers(Position position) async {
+  Future<void> fetchNearbyPlumbers({
+    required String selectedService,
+    required Position position,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('bearer_token');
-      final userId = prefs.getInt('user_id');
 
-      if (token == null || token.isEmpty || userId == null) {
-        _showError('Authentication failed. Please login again.');
+      if (token == null) {
+        _showError('Authentication token missing. Please log in again.');
         return;
       }
 
@@ -769,127 +1412,194 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         },
       );
 
-      print('📡 GET /profile status: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        _showError('Failed to fetch data. Status: ${response.statusCode}');
+        return;
+      }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> allPlumbers = data['data'];
+      final decoded = json.decode(response.body);
+      List<dynamic> data;
 
-        List<Plumber> nearby = [];
+      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+        data = decoded['data'];
+      } else {
+        _showError('Unexpected API response format.');
+        return;
+      }
 
-        for (var profile in allPlumbers) {
-          if (profile['role'] == 'plumber' && profile['service_area'] != null) {
-            try {
-              List<Location> locations =
-                  await locationFromAddress(profile['service_area']);
-              if (locations.isNotEmpty) {
-                double distance = Geolocator.distanceBetween(
-                  position.latitude,
-                  position.longitude,
-                  locations.first.latitude,
-                  locations.first.longitude,
-                );
+      final List<Map<String, dynamic>> matchedPlumbers = [];
 
-                if (distance <= 5000) {
-                  if (profile['plumber_image'] != null &&
-                      !profile['plumber_image'].toString().startsWith('http')) {
-                    profile['plumber_image'] =
-                        '$baseUrl/uploads/plumber_image/${profile['plumber_image']}';
-                  }
+      for (var item in data) {
+        if (item is! Map<String, dynamic>) continue;
+        final role = item['role'];
+        final skillRaw = item['skill'];
+        final serviceAreaRaw = item['service_area'];
 
-                  nearby.add(Plumber.fromJson(profile));
-                }
-              }
-            } catch (e) {
-              print('⚠️ Location error for ${profile['service_area']}: $e');
-            }
+        if ((role?.toString().toLowerCase() ?? '') != 'plumber') continue;
+
+        List<String> skills = [];
+        if (skillRaw is String) {
+          skills =
+              skillRaw.split(',').map((s) => s.trim().toLowerCase()).toList();
+        } else if (skillRaw is List) {
+          skills =
+              skillRaw.map((s) => s.toString().trim().toLowerCase()).toList();
+        }
+
+        if (!skills.contains(selectedService.toLowerCase())) continue;
+
+        double? lat;
+        double? lng;
+
+        if (serviceAreaRaw is Map<String, dynamic>) {
+          lat = double.tryParse(serviceAreaRaw['lat']?.toString() ?? '');
+          lng = double.tryParse(serviceAreaRaw['lng']?.toString() ?? '');
+        } else if (serviceAreaRaw is String) {
+          final coords = await geocodeAddress(serviceAreaRaw);
+          if (coords != null) {
+            lat = coords.latitude;
+            lng = coords.longitude;
           }
         }
 
-        if (mounted) {
-          setState(() {
-            _plumbers = nearby;
-          });
-        }
+        if (lat != null && lng != null) {
+          final distanceMeters = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            lat,
+            lng,
+          );
 
-        if (nearby.isNotEmpty && mounted) {
-          final selectedPlumber = nearby.first;
-
-          Future.microtask(() {
-            if (!mounted) return;
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ConfirmationPage(
-                  plumber: selectedPlumber,
-                  latitude: position.latitude,
-                  longitude: position.longitude,
-                ),
-              ),
-            );
-          });
-        } else {
-          _showError('No nearby plumbers found.');
+          if (distanceMeters <= 5000) {
+            matchedPlumbers.add(Map<String, dynamic>.from(item));
+          }
         }
-      } else {
-        _showError('Server error: ${response.statusCode}');
       }
-    } catch (e) {
-      _showError('Failed to fetch plumbers.');
-      print('❌ Exception in fetchNearbyPlumbers: $e');
+
+      if (matchedPlumbers.isEmpty) {
+        _showError('No plumbers found within 5km matching "$selectedService".');
+        return;
+      }
+
+      Map<String, List<Plumber>> grouped = {};
+      for (var plumberMap in matchedPlumbers) {
+        Plumber plumber = Plumber.fromJson(plumberMap);
+        for (var service in plumber.services) {
+          grouped.putIfAbsent(service, () => []);
+          grouped[service]!.add(plumber);
+        }
+      }
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlumberProfilesByServicePage(
+            groupedPlumbers: grouped,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          ),
+        ),
+      );
+    } catch (e, stack) {
+      print('❌ Exception: $e');
+      print(stack);
+      _showError('Error occurred: ${e.toString()}');
     }
   }
 
-
-  /// ✅ Get current position safely
-  Future<Position> _determinePosition(BuildContext context) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) throw Exception('Location services are disabled.');
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permission denied.');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception('Location permission permanently denied.');
-    }
-
-    return await Geolocator.getCurrentPosition();
-  }
-
-  /// ✅ Show snack bar error
   void _showError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(safeContext).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _handleServiceTap(String serviceName) {
+    if (serviceName == "Plumber") {
+      _showPlumberServiceSelection();
+    } else {
+      _showError('Service "$serviceName" not implemented yet.');
     }
+  }
+
+  void _showPlumberServiceSelection() {
+    showModalBottomSheet(
+      context: context,
+      builder: (bottomSheetContext) {
+        return ListView.builder(
+          shrinkWrap: true,
+          itemCount: plumberServices.length,
+          itemBuilder: (context, index) {
+            final service = plumberServices[index];
+            return ListTile(
+              title: Text(service),
+              onTap: () async {
+                Navigator.pop(bottomSheetContext);
+                if (!mounted) return;
+                setState(() => _loading = true);
+                try {
+                  final position = await _determinePosition();
+                  if (!mounted) return;
+                  await fetchNearbyPlumbers(
+                    selectedService: service,
+                    position: position,
+                  );
+                } catch (e) {
+                  if (mounted) {
+                    _showError('Something went wrong. Please try again.');
+                  }
+                } finally {
+                  if (mounted) setState(() => _loading = false);
+                }
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Emergency Services'),
-        backgroundColor: Colors.red,
+        title: const Text('Select a Service'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator())
-          : ListView.separated(
-              itemCount: services.length,
-              separatorBuilder: (context, index) => Divider(),
-              itemBuilder: (context, index) {
-                final service = services[index];
-                return ListTile(
-                  leading: Icon(service['icon'] as IconData, color: Colors.red),
-                  title: Text(service['title']),
-                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _handleServiceTap(context, service['title']),
+          ? const Center(child: CircularProgressIndicator())
+          : GridView.count(
+              crossAxisCount: 2,
+              childAspectRatio: 1,
+              padding: const EdgeInsets.all(16),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: services.map((service) {
+                return GestureDetector(
+                  onTap: () => _handleServiceTap(service['name']),
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(service['icon'], size: 48),
+                        const SizedBox(height: 8),
+                        Text(service['name'],
+                            style: const TextStyle(fontSize: 16))
+                      ],
+                    ),
+                  ),
                 );
-              },
+              }).toList(),
             ),
     );
   }
 }
+
+
