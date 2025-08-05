@@ -1283,6 +1283,338 @@
 
 
 
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:skill_link/pages/Apis.dart';
+// import 'package:skill_link/pages/Emergency/plumberProfilePage.dart';
+// import 'package:skill_link/pages/userservice/plumbermodel.dart';
+
+// class EmergencyScreen extends StatefulWidget {
+//   const EmergencyScreen({super.key});
+
+//   @override
+//   State<EmergencyScreen> createState() => _EmergencyScreenState();
+// }
+
+// class _EmergencyScreenState extends State<EmergencyScreen> {
+//   bool _loading = false;
+//   List<Map<String, dynamic>> plumberData = [];
+//   late BuildContext safeContext;
+
+//   final List<Map<String, dynamic>> services = [
+//     {'name': 'Plumber', 'icon': Icons.plumbing},
+//     {'name': 'Electrician', 'icon': Icons.electrical_services},
+//     {'name': 'Carpenter', 'icon': Icons.handyman},
+//   ];
+
+//   final List<String> plumberServices = [
+//     'Tap Leakage Fix',
+//     'Drain Cleaning',
+//     'Toilet Repair',
+//     'Pipe Blockage',
+//     'Bathroom Fitting',
+//     'Water Tank Cleaning',
+//   ];
+
+//   @override
+//   void didChangeDependencies() {
+//     super.didChangeDependencies();
+//     safeContext = context;
+//   }
+
+//   Future<Position> _determinePosition() async {
+//     bool serviceEnabled;
+//     LocationPermission permission;
+
+//     serviceEnabled = await Geolocator.isLocationServiceEnabled();
+//     if (!serviceEnabled) {
+//       _showError('Location services are disabled.');
+//       throw Exception('Location disabled');
+//     }
+
+//     permission = await Geolocator.checkPermission();
+//     if (permission == LocationPermission.denied) {
+//       permission = await Geolocator.requestPermission();
+//       if (permission == LocationPermission.denied) {
+//         _showError('Location permissions are denied');
+//         throw Exception('Permission denied');
+//       }
+//     }
+
+//     if (permission == LocationPermission.deniedForever) {
+//       _showError('Location permissions are permanently denied');
+//       throw Exception('Permission denied forever');
+//     }
+
+//     return await Geolocator.getCurrentPosition();
+//   }
+
+//   Future<Position?> geocodeAddress(String address) async {
+//     try {
+//       final url = Uri.parse(
+//           'https://nominatim.openstreetmap.org/search?q=$address&format=json');
+//       final response = await http.get(url, headers: {
+//         'User-Agent': 'FlutterApp',
+//       });
+
+//       if (response.statusCode == 200) {
+//         final List data = json.decode(response.body);
+//         if (data.isNotEmpty) {
+//           final firstResult = data[0];
+//           final lat = double.tryParse(firstResult['lat']);
+//           final lon = double.tryParse(firstResult['lon']);
+//           if (lat != null && lon != null) {
+//             return Position(
+//               latitude: lat,
+//               longitude: lon,
+//               accuracy: 0,
+//               altitude: 0,
+//               altitudeAccuracy: 0,
+//               heading: 0,
+//               headingAccuracy: 0,
+//               speed: 0,
+//               speedAccuracy: 0,
+//               timestamp: DateTime.now(),
+//               isMocked: true,
+//             );
+//           }
+//         }
+//       } else {
+//         print('❌ Geocoding failed: ${response.statusCode}');
+//       }
+//     } catch (e) {
+//       print('❌ Geocoding exception: $e');
+//     }
+//     return null;
+//   }
+
+//   Future<void> fetchNearbyPlumbers({
+//     required String selectedService,
+//     required Position position,
+//   }) async {
+//     try {
+//       final prefs = await SharedPreferences.getInstance();
+//       final token = prefs.getString('bearer_token');
+
+//       if (token == null) {
+//         _showError('Authentication token missing. Please log in again.');
+//         return;
+//       }
+
+//       final response = await http.get(
+//         Uri.parse('$baseUrl/api/profile'),
+//         headers: {
+//           'Authorization': 'Bearer $token',
+//           'Accept': 'application/json',
+//         },
+//       );
+
+//       if (response.statusCode != 200) {
+//         _showError('Failed to fetch data. Status: ${response.statusCode}');
+//         return;
+//       }
+
+//       final decoded = json.decode(response.body);
+//       List<dynamic> data;
+
+//       if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+//         data = decoded['data'];
+//       } else {
+//         _showError('Unexpected API response format.');
+//         return;
+//       }
+
+//       final List<Map<String, dynamic>> matchedPlumbers = [];
+
+//       for (var item in data) {
+//         if (item is! Map<String, dynamic>) continue;
+//         final role = item['role'];
+//         final skillRaw = item['skill'];
+//         final serviceAreaRaw = item['service_area'];
+
+//         if ((role?.toString().toLowerCase() ?? '') != 'plumber') continue;
+
+//         List<String> skills = [];
+//         if (skillRaw is String) {
+//           skills =
+//               skillRaw.split(',').map((s) => s.trim().toLowerCase()).toList();
+//         } else if (skillRaw is List) {
+//           skills =
+//               skillRaw.map((s) => s.toString().trim().toLowerCase()).toList();
+//         }
+
+//         if (!skills.contains(selectedService.toLowerCase())) continue;
+
+//         double? lat;
+//         double? lng;
+
+//         if (serviceAreaRaw is Map<String, dynamic>) {
+//           lat = double.tryParse(serviceAreaRaw['lat']?.toString() ?? '');
+//           lng = double.tryParse(serviceAreaRaw['lng']?.toString() ?? '');
+//         } else if (serviceAreaRaw is String) {
+//           final coords = await geocodeAddress(serviceAreaRaw);
+//           if (coords != null) {
+//             lat = coords.latitude;
+//             lng = coords.longitude;
+//           }
+//         }
+
+//         if (lat != null && lng != null) {
+//           final distanceMeters = Geolocator.distanceBetween(
+//             position.latitude,
+//             position.longitude,
+//             lat,
+//             lng,
+//           );
+
+//           if (distanceMeters <= 5000) {
+//             matchedPlumbers.add(Map<String, dynamic>.from(item));
+//           }
+//         }
+//       }
+
+//       if (matchedPlumbers.isEmpty) {
+//         _showError('No plumbers found within 5km matching "$selectedService".');
+//         return;
+//       }
+
+//       Map<String, List<Plumber>> grouped = {};
+//       for (var plumberMap in matchedPlumbers) {
+//         Plumber plumber = Plumber.fromJson(plumberMap);
+//         for (var service in plumber.services) {
+//           grouped.putIfAbsent(service, () => []);
+//           grouped[service]!.add(plumber);
+//         }
+//       }
+
+//       if (!mounted) return;
+
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(
+//           builder: (_) => PlumberProfilesByServicePage(
+//             groupedPlumbers: grouped,
+//             latitude: position.latitude,
+//             longitude: position.longitude,
+//           ),
+//         ),
+//       );
+//     } catch (e, stack) {
+//       print('❌ Exception: $e');
+//       print(stack);
+//       _showError('Error occurred: ${e.toString()}');
+//     }
+//   }
+
+//   void _showError(String message) {
+//     if (!mounted) return;
+//     ScaffoldMessenger.of(safeContext).showSnackBar(
+//       SnackBar(content: Text(message)),
+//     );
+//   }
+
+//   void _handleServiceTap(String serviceName) {
+//     if (serviceName == "Plumber") {
+//       _showPlumberServiceSelection();
+//     } else {
+//       _showError('Service "$serviceName" not implemented yet.');
+//     }
+//   }
+
+//   void _showPlumberServiceSelection() {
+//     showModalBottomSheet(
+//       context: context,
+//       builder: (bottomSheetContext) {
+//         return ListView.builder(
+//           shrinkWrap: true,
+//           itemCount: plumberServices.length,
+//           itemBuilder: (context, index) {
+//             final service = plumberServices[index];
+//             return ListTile(
+//               title: Text(service),
+//               onTap: () async {
+//                 Navigator.pop(bottomSheetContext);
+//                 if (!mounted) return;
+//                 setState(() => _loading = true);
+//                 try {
+//                   final position = await _determinePosition();
+//                   if (!mounted) return;
+//                   await fetchNearbyPlumbers(
+//                     selectedService: service,
+//                     position: position,
+//                   );
+//                 } catch (e) {
+//                   if (mounted) {
+//                     _showError('Something went wrong. Please try again.');
+//                   }
+//                 } finally {
+//                   if (mounted) setState(() => _loading = false);
+//                 }
+//               },
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('Select Emergency Service'),
+//         backgroundColor: Colors.red,
+//         foregroundColor: Colors.white,
+//       ),
+//      body: _loading
+//             ? const Center(child: CircularProgressIndicator())
+//             : GridView.count(
+//                 crossAxisCount: 2,
+//                 childAspectRatio: 1,
+//                 padding: const EdgeInsets.all(16),
+//                 crossAxisSpacing: 16,
+//                 mainAxisSpacing: 16,
+//                 children: services.map((service) {
+//                   return GestureDetector(
+//                     onTap: () => _handleServiceTap(service['name']),
+//                     child: Container(
+//                       decoration: BoxDecoration(
+//                         color:
+//                             Colors.red[50], // light background for visibility
+//                         borderRadius: BorderRadius.circular(16),
+//                         border: Border.all(color: Colors.redAccent, width: 1.5),
+//                       ),
+//                       padding: const EdgeInsets.all(12),
+//                       child: Column(
+//                         mainAxisAlignment: MainAxisAlignment.center,
+//                         children: [
+//                           Icon(service['icon'],
+//                               size: 48, color: Colors.redAccent),
+//                           const SizedBox(height: 8),
+//                           Text(
+//                             service['name'],
+//                             textAlign: TextAlign.center,
+//                             style: const TextStyle(fontSize: 16),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   );
+//                 }).toList(),
+//               )
+
+//     );
+//   }
+// }
+
+
+
+
+
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -1304,20 +1636,30 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   List<Map<String, dynamic>> plumberData = [];
   late BuildContext safeContext;
 
-  final List<Map<String, dynamic>> services = [
-    {'name': 'Plumber', 'icon': Icons.plumbing},
-    {'name': 'Electrician', 'icon': Icons.electrical_services},
-    {'name': 'Carpenter', 'icon': Icons.handyman},
-  ];
+  final Map<String, List<String>> serviceCategories = {
+    'Plumber': [
+      'Tap Leakage Fix',
+      'Drain Cleaning',
+      'Toilet Repair',
+      'Pipe Blockage',
+      'Bathroom Fitting',
+      'Water Tank Cleaning',
+    ],
+    'Electrician': [
+      'Wiring Repair',
+      'Fan Installation',
+      'Light Fitting',
+      'Short Circuit Fix',
+    ],
+    'Carpenter': [
+      'Furniture Repair',
+      'Door Installation',
+      'Wardrobe Setup',
+      'Wooden Flooring',
+    ],
+  };
 
-  final List<String> plumberServices = [
-    'Tap Leakage Fix',
-    'Drain Cleaning',
-    'Toilet Repair',
-    'Pipe Blockage',
-    'Bathroom Fitting',
-    'Water Tank Cleaning',
-  ];
+  Set<String> expandedServices = {};
 
   @override
   void didChangeDependencies() {
@@ -1326,16 +1668,13 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   Future<Position> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       _showError('Location services are disabled.');
       throw Exception('Location disabled');
     }
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -1382,8 +1721,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             );
           }
         }
-      } else {
-        print('❌ Geocoding failed: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Geocoding exception: $e');
@@ -1516,90 +1853,86 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  void _handleServiceTap(String serviceName) {
-    if (serviceName == "Plumber") {
-      _showPlumberServiceSelection();
-    } else {
-      _showError('Service "$serviceName" not implemented yet.');
+  Future<void> _handleSubServiceTap(String serviceName, String subService) async {
+    if (serviceName != "Plumber") {
+      _showError('"$serviceName" support coming soon.');
+      return;
     }
-  }
 
-  void _showPlumberServiceSelection() {
-    showModalBottomSheet(
-      context: context,
-      builder: (bottomSheetContext) {
-        return ListView.builder(
-          shrinkWrap: true,
-          itemCount: plumberServices.length,
-          itemBuilder: (context, index) {
-            final service = plumberServices[index];
-            return ListTile(
-              title: Text(service),
-              onTap: () async {
-                Navigator.pop(bottomSheetContext);
-                if (!mounted) return;
-                setState(() => _loading = true);
-                try {
-                  final position = await _determinePosition();
-                  if (!mounted) return;
-                  await fetchNearbyPlumbers(
-                    selectedService: service,
-                    position: position,
-                  );
-                } catch (e) {
-                  if (mounted) {
-                    _showError('Something went wrong. Please try again.');
-                  }
-                } finally {
-                  if (mounted) setState(() => _loading = false);
-                }
-              },
-            );
-          },
-        );
-      },
-    );
+    setState(() => _loading = true);
+    try {
+      final position = await _determinePosition();
+      if (!mounted) return;
+      await fetchNearbyPlumbers(
+        selectedService: subService,
+        position: position,
+      );
+    } catch (e) {
+      if (mounted) {
+        _showError('Something went wrong. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select a Service'),
-        backgroundColor: Colors.blue,
+        title: const Text('Select Emergency Service'),
+        backgroundColor: Colors.redAccent,
         foregroundColor: Colors.white,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : GridView.count(
-              crossAxisCount: 2,
-              childAspectRatio: 1,
+          : ListView(
               padding: const EdgeInsets.all(16),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: services.map((service) {
-                return GestureDetector(
-                  onTap: () => _handleServiceTap(service['name']),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              children: serviceCategories.entries.map((entry) {
+                final service = entry.key;
+                final subServices = entry.value;
+                final isExpanded = expandedServices.contains(service);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListTile(
+                      title: Text(
+                        service,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      trailing: Icon(
+                        isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: Colors.black,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          if (isExpanded) {
+                            expandedServices.remove(service);
+                          } else {
+                            expandedServices.add(service);
+                          }
+                        });
+                      },
                     ),
-                    elevation: 4,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(service['icon'], size: 48),
-                        const SizedBox(height: 8),
-                        Text(service['name'],
-                            style: const TextStyle(fontSize: 16))
-                      ],
-                    ),
-                  ),
+                    if (isExpanded)
+                      ...subServices.map((subService) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16.0),
+                          child: ListTile(
+                            title: Text(subService),
+                            onTap: () => _handleSubServiceTap(service, subService),
+                          ),
+                        );
+                      }).toList(),
+                    const Divider(thickness: 1),
+                  ],
                 );
               }).toList(),
             ),
     );
   }
 }
-
-
